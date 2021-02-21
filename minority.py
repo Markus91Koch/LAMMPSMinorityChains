@@ -2,7 +2,6 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
-plt.switch_backend('Qt4Agg')
 import seaborn as sns; #sns.set()
 import pandas as pd
 import re
@@ -12,128 +11,114 @@ from itertools import groupby
 from operator import itemgetter
 import sys
 
-#print('Number of arguments:', len(sys.argv), 'arguments.')
-#print('Argument List:', str(sys.argv))
-#print(int(sys.argv[1]))
+plt.switch_backend('Qt4Agg')
 
 os.chdir(".")
 
+##### read in atoms section and bonds section ######
 fdata=np.loadtxt("atoms.txt", skiprows=0)
 gdata=np.loadtxt("footer.txt", skiprows=0)
 
-N=64
-Nm=int(sys.argv[1])
-Nmiddle=int(Nm/2)
-print("Nmiddle:", Nmiddle)
 
+N=128 # length of brush chains
+Nm=int(sys.argv[1]) # final length of minority chain (1st command line input)
+Nmiddle=int(Nm/2) # middle monomer position of minority chain
 
+# total number of monomers and boonds so far
 Ntot=len(fdata)
 Nbond=len(gdata)
 
-#print(Ntot)
-#exit()
-
-brush=fdata[fdata[:,2]!=4] # exclude wall particles (type 4)
+# take only atoms of types unequal 4 (brush) or equal 4 (wall)
+brush = fdata[fdata[:,2]!=4]
 wall = fdata[fdata[:,2]==4]
 
-
-#print(brush)
-#print(np.abs(brush[:,3:5]))
-#print(np.min(np.abs(brush[:,3])))
-#print(np.min(np.abs(brush[:,4])))
-
-#brush[:,3].index(np.min(np.abs(brush[:,3])))
-xelem = np.where(np.abs(brush[:,3]) == np.min(np.abs(brush[:,3]))) # find most central chain in x and y
+# find most central chain in x and y
+xelem = np.where(np.abs(brush[:,3]) == np.min(np.abs(brush[:,3])))
 yelem = np.where(np.abs(brush[:,4]) == np.min(np.abs(brush[:,4])))
+common = np.intersect1d(xelem, yelem) 
 
-#print(xelem, yelem)
-
-
-#exit()
-
-common = np.intersect1d(xelem, yelem)   #
-#print(list(common))
-#print(fdata[common[:],:])
-print(len(common))
-print(fdata[common[0], 1])
-#exit()
-
-Nm_start = common[0]            # start index of chain
-Nm_eq = common[-1]              # end index of chain
-
+Nm_start = common[0]            # start index of chain to be modified
+Nm_eq = common[-1]              # end index of that chain
 start_index = int(brush[common[0],0])
 end_index = int(brush[common[-1],0])
 
-brush[common[0],2]=5                    # change type of head
-#brush[common[-1],2]=7                   # change type of end
-brush[common[-1],2]=6
-brush[common[0]+1:common[-1],2]=6       # change type of mid
+brush[common[0],2]=5                    # change atom type of previous head
+brush[common[-1],2]=6                   # change atom type of previous end
+brush[common[0]+1:common[-1],2]=6       # change atom type of prev. midsection
 
-if Nmiddle<=N:
+# if middle monomer is below N, edit in old data 
+if Nmiddle <= N:
     brush[common[0]+Nmiddle-1,2]=8
 
+# get cartesian coords of last monomer of that chain
 x_last_mon = brush[common[-1],3]
 y_last_mon = brush[common[-1],4] 
 z_last_mon = brush[common[-1],5]
+molnr = int(brush[common[0],1])         # find its molecule index
 
-molnr = int(brush[common[0],1])         # find molecule nr
-#print(molnr)
+#### add monomers at the end of file if minority chain is longer than brush chain
 
-#### add monomers at the end if needed!!!!
-
+# if minority chain is longer than bulk chains
 if Nm>N:
+
+    # number of protruding monomers
     Nadd=Nm-N
 
+    # collect data (coords, types, ..) of newly added monomers
     newmon=[]
     for i in range(Nadd):
         newmon.append([Ntot+i+1, molnr, 6, x_last_mon, y_last_mon, z_last_mon+i+1])
 
+    # change atom type of new end monomer
     new = np.array(newmon)
-    new[-1,2]=7
+    new[-1,2] = 7
 
-    if Nmiddle>N:
-        #print("Nmiddle-N=", Nmiddle-N)
-        new[Nmiddle-N-1,2]=8
+    # atom type of middle monomer
+    if Nmiddle > N:
+        new[Nmiddle-N-1,2] = 8
 
-    #print(new)
-    old=np.concatenate((brush, wall), axis=0)
-    full=np.concatenate((old, new), axis=0)
+    # add new atom coords to old ones
+    old = np.concatenate((brush, wall), axis=0)
+    full = np.concatenate((old, new), axis=0)
 
-    #print(full)
+    # generate new bonds info
 
-    #### now adjust bonds
-    lastbond=int(gdata[-1,0])    #last bond index
-    newb=[]
+    lastbond=int(gdata[-1,0])    # index of last bond of "old" chain
+    newb = []
     for i in range(Nadd):
-        if i==0:
+        if i == 0:
             newb.append([lastbond+i+1, 1, end_index, Ntot+i+1])  
         else:
             newb.append([lastbond+i+1, 1, Ntot+i, Ntot+i+1])
+
+    #add new bond info to old one
     newbonds=np.array(newb)
     fullbonds=np.concatenate((gdata, newb), axis=0)
-    #print(newb)
+
+# if minority chain is not longer than bulk chains
+# just change end monomer and recombine brush and wall data
 else:
-    brush[common[-1],2]=7
-    full=np.concatenate((brush, wall), axis=0)
-    fullbonds=gdata    
+    brush[common[-1],2] = 7
+    full = np.concatenate((brush, wall), axis=0)
+    fullbonds = gdata    
 
-## WRITE OUT FILES
+#### WRITE OUT FILES ######
 
-#print(full.shape)
-#print(int(full[5,0]))
-### first of all atom coords
+# first of all atom coords
 file = open("newatoms.txt", "w")
 #file.write("# Nm\tEpsilon_crit\tUbarrier\tFmin\tFmax\tFslope\n")
 for i in range(len(full)):
     file.write("%d\t%d\t%d\t%f\t%f\t%f\n" % (int(full[i,0]), int(full[i,1]), int(full[i,2]), full[i,3], full[i,4], full[i,5]))
 file.close()
 
+# secondly bond section
 file = open("newfooter.txt", "w")
 #file.write("# Nm\tEpsilon_crit\tUbarrier\tFmin\tFmax\tFslope\n")
 for i in range(len(fullbonds)):
     file.write("%d\t%d\t%d\t%d\n" % (int(fullbonds[i,0]), int(fullbonds[i,1]), int(fullbonds[i,2]), int(fullbonds[i,3])))
 file.close()
 
+# generate file with info about new total no. of atoms and bonds
 file = open("newinfo.txt", "w")
 file.write("%d\n" % len(full))
 file.write("%d\n" % len(fullbonds))
