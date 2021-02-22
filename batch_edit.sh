@@ -28,6 +28,7 @@ tail -n+$((nb-1)) $1 | head -3 > mid.txt
 tail -n+$((na+2)) $1 | head -$((nb-na-3)) > atoms.txt
 
 
+# loop over Nm (length of minority chain lengths)
 for k in 192 256 320
 do
     # apply python script on brush to extend central chain

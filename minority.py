@@ -16,17 +16,18 @@ plt.switch_backend('Qt4Agg')
 os.chdir(".")
 
 ##### read in atoms section and bonds section ######
+
 fdata=np.loadtxt("atoms.txt", skiprows=0)
 gdata=np.loadtxt("footer.txt", skiprows=0)
 
 
-N=128 # length of brush chains
-Nm=int(sys.argv[1]) # final length of minority chain (1st command line input)
-Nmiddle=int(Nm/2) # middle monomer position of minority chain
+N = 128 # length of brush chains
+Nm = int(sys.argv[1]) # final length of minority chain (1st command line input)
+Nmiddle = int(Nm/2) # middle monomer position of minority chain
 
 # total number of monomers and boonds so far
-Ntot=len(fdata)
-Nbond=len(gdata)
+Ntot = len(fdata)
+Nbond = len(gdata)
 
 # take only atoms of types unequal 4 (brush) or equal 4 (wall)
 brush = fdata[fdata[:,2]!=4]
@@ -42,13 +43,13 @@ Nm_eq = common[-1]              # end index of that chain
 start_index = int(brush[common[0],0])
 end_index = int(brush[common[-1],0])
 
-brush[common[0],2]=5                    # change atom type of previous head
-brush[common[-1],2]=6                   # change atom type of previous end
-brush[common[0]+1:common[-1],2]=6       # change atom type of prev. midsection
+brush[common[0],2] = 5                    # change atom type of previous head
+brush[common[-1],2] = 6                   # change atom type of previous end
+brush[common[0]+1:common[-1],2] = 6       # change atom type of prev. midsection
 
 # if middle monomer is below N, edit in old data 
 if Nmiddle <= N:
-    brush[common[0]+Nmiddle-1,2]=8
+    brush[common[0]+Nmiddle-1,2] = 8
 
 # get cartesian coords of last monomer of that chain
 x_last_mon = brush[common[-1],3]
@@ -59,13 +60,13 @@ molnr = int(brush[common[0],1])         # find its molecule index
 #### add monomers at the end of file if minority chain is longer than brush chain
 
 # if minority chain is longer than bulk chains
-if Nm>N:
+if Nm > N:
 
     # number of protruding monomers
-    Nadd=Nm-N
+    Nadd = Nm - N
 
     # collect data (coords, types, ..) of newly added monomers
-    newmon=[]
+    newmon = []
     for i in range(Nadd):
         newmon.append([Ntot+i+1, molnr, 6, x_last_mon, y_last_mon, z_last_mon+i+1])
 
@@ -92,8 +93,8 @@ if Nm>N:
             newb.append([lastbond+i+1, 1, Ntot+i, Ntot+i+1])
 
     #add new bond info to old one
-    newbonds=np.array(newb)
-    fullbonds=np.concatenate((gdata, newb), axis=0)
+    newbonds = np.array(newb)
+    fullbonds = np.concatenate((gdata, newb), axis=0)
 
 # if minority chain is not longer than bulk chains
 # just change end monomer and recombine brush and wall data
