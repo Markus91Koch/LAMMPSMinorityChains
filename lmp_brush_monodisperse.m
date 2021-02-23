@@ -1,8 +1,7 @@
-
 % make a read file for LAMMPS
+
 clear;
 tic
-%numbers
 
 Nmon1 = 2 %36;
 Nmon2 = 128 - Nmon1 %35;
@@ -103,7 +102,7 @@ Nc = floor(sigma*Lx*Ly*factor)+1
 %Nc = floor(sigma*Lx_final*Ly_final*factor)+1
 %Nc=2
 
-% alllocate space for grafting coords etc.
+% allocate space for grafting coords etc.
 graftingpoints = zeros(2*Nc,2);
 graftingcoords = zeros(2*Nc,2);
 
